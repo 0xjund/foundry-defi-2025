@@ -1,0 +1,28 @@
+{
+  "name": "foundry-defi-2025",
+  "version": "1.0.0",
+  "description": "1. Anchored or pegged  -> $1.00 USD   - Use a chainlink price feed   - Set a function to exchange ETH & BTC for $$$ 2. Stability Mechanism (Minting): (Decentralised)   - People can only mint the stabecoin with enough collateral (coded) 3. Collateral: Exogenous (wETH & wBTC)",
+  "main": "index.js",
+  "directories": {
+    "lib": "lib",
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/0xjund/foundry-defi-2025.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/0xjund/foundry-defi-2025/issues"
+  },
+  "homepage": "https://github.com/0xjund/foundry-defi-2025#readme",
+  "devDependencies": {
+    "hardhat": "^2.22.19"
+  }
+}
