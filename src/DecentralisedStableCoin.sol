@@ -49,20 +49,21 @@ contract DecentralisedStableCoin is ERC20Burnable, Ownable {
         uint256 balance = balanceOf(msg.sender);
         if (_amount <= 0) {
             revert DecentralisedStableCoin__MustBeMoreThanZero();
-        } if (balance < _amount) {
+        }
+        if (balance < _amount) {
             revert DecentralisedStableCoin__BurnAmountExceedsBalance();
         }
         super.burn(_amount);
     }
 
-    function mint(address _to, uint256 _amount) external onlyOwner returns(bool) {
-        if(_to == address(0)) {
+    function mint(address _to, uint256 _amount) external onlyOwner returns (bool) {
+        if (_to == address(0)) {
             revert DecentralisedStableCoin__NotZeroAddress();
         }
         if (_amount <= 0) {
             revert DecentralisedStableCoin__MustBeMoreThanZero();
         }
         _mint(_to, _amount);
-        return true;         
+        return true;
     }
 }
