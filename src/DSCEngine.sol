@@ -1,4 +1,4 @@
-//SPDX-License-Identifer:MIT
+//SPDX-License-Identifier:MIT
 
 // Layout of Contract:
 // version
@@ -48,13 +48,17 @@ contract DSCEngine is ReentrancyGuard {
     error DscEngine__TokenAddressesAndPriceFeedAddressesMustBeSameLength();
     error DscEngine__NotAllowedToken();
     error DscEngine__TransferFailed();
-
+    error DscEngine__BreaksHealthFactor(uint256 healthFactor);
+    error DscEngine__MintFailed();
+    
 /*//////////////////////////////////////////////////////////////
                             STATE VARIABLES
 //////////////////////////////////////////////////////////////*/
 uint256 private constant ADDITIONAL_FEED_PRECISION = 1e10;
 uint256 private constant PRECISION = 1e18;
-
+uint256 private constant LIQUIDATION_THRESHOLD = 50; //200% overcollateralized
+uint256 private constant LIQUIDATION_PRECISION = 100;
+uint256 private constant MIN_HEALTH_FACTOR = 1;
 
 mapping(address token => address priceFeed) private s_priceFeeds;
 mapping(address user => mapping(address token => uint256 amount)) private s_collateralDeposited; 
@@ -69,8 +73,6 @@ DecentralisedStableCoin private immutable i_dsc;
 //////////////////////////////////////////////////////////////*/
 
 event CollateralDeposited(address indexed user, address indexed token, uint256 indexed amount); 
-
-
 
 /*//////////////////////////////////////////////////////////////
                                MODIFIERS
@@ -93,6 +95,7 @@ event CollateralDeposited(address indexed user, address indexed token, uint256 i
 /*//////////////////////////////////////////////////////////////
                                FUNCTIONS
 //////////////////////////////////////////////////////////////*/
+
     constructor(address[] memory tokenAddresses, address[] memory priceFeedAddresses, address dscAddress) {
         if(tokenAddresses.length != priceFeedAddresses.length) {
             revert DscEngine__TokenAddressesAndPriceFeedAddressesMustBeSameLength();
@@ -140,6 +143,10 @@ event CollateralDeposited(address indexed user, address indexed token, uint256 i
         s_DscMinted[msg.sender] += amountDscToMint;
         //revert if mint amount is above collateral limit
         _revertIfHealthFactorIsBroken(msg.sender);
+        bool minted = i_dsc.mint(msg.sender, amountDscToMint);
+        if(!minted){
+            revert DscEngine__MintFailed();
+        }
     }
 
     function burnDsc() external {}
@@ -166,11 +173,20 @@ event CollateralDeposited(address indexed user, address indexed token, uint256 i
         // total DSC minited
         // total collateral VALUE
         (uint256 totalDscMinted, uint256 collateralValueInUsd) = _getAccountInformation(user);
+        uint256 collateralAdjustedForThreshold = (collateralValueInUsd * LIQUIDATION_THRESHOLD) / LIQUIDATION_PRECISION;
+        return (collateralAdjustedForThreshold * PRECISION) / totalDscMinted;  
     }
+
+
+    // Check Health Factor
+    // Revert if requirements are not met
     
     function _revertIfHealthFactorIsBroken(address user) internal view {
-        
-    }
+        uint256 userHealthFactor = _healthFactor(user);
+        if (userHealthFactor < MIN_HEALTH_FACTOR) {
+            revert DscEngine__BreaksHealthFactor(userHealthFactor);
+        } 
+        }
 
 /*//////////////////////////////////////////////////////////////
                      PUBLIC & EXTERNAL VIEW FUNCTIONS
