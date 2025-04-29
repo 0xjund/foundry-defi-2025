@@ -73,6 +73,7 @@ DecentralisedStableCoin private immutable i_dsc;
 //////////////////////////////////////////////////////////////*/
 
 event CollateralDeposited(address indexed user, address indexed token, uint256 indexed amount); 
+event CollateralRedeemed(address indexed user, address indexed token, uint256 indexed amount);
 
 /*//////////////////////////////////////////////////////////////
                                MODIFIERS
@@ -111,8 +112,18 @@ event CollateralDeposited(address indexed user, address indexed token, uint256 i
 /*//////////////////////////////////////////////////////////////
                            EXTERNAL FUNCTIONS
 //////////////////////////////////////////////////////////////*/
-    
-    function depositCollateralAndMintDsc() external {}
+
+    /*
+    * @param tokenCollateralAddress: The address of the token to deposit as collateral
+    * @param amountCollateral The amount of collateral to depoist
+    * @param amountDscToMint The amount of decentralised stablecoin to mint
+    * @notice this function will deposit your collateral and mint DSC in one transaction
+    */
+
+    function depositCollateralAndMintDsc(address tokenCollateralAddress, uint256 amountCollateral, uint256 amountDscToMint) external {
+        depositCollateral(tokenCollateralAddress, amountCollateral);
+        mintDsc(amountDscToMint);        
+    }
 
     /*
     * @notice follows CEI pattern
@@ -120,7 +131,7 @@ event CollateralDeposited(address indexed user, address indexed token, uint256 i
     * @param amountCollateral The amount of collateral to deposit
     */
 
-    function despositCollateral(address tokenCollateralAddress, uint256 amountCollateral) moreThanZero(amountCollateral) external moreThanZero(amountCollateral) isAllowedToken(tokenCollateralAddress) nonReentrant {
+    function depositCollateral(address tokenCollateralAddress, uint256 amountCollateral) moreThanZero(amountCollateral) public moreThanZero(amountCollateral) isAllowedToken(tokenCollateralAddress) nonReentrant {
         s_collateralDeposited[msg.sender][tokenCollateralAddress] += amountCollateral;
         // Remember to emit an event when you change state
         emit CollateralDeposited(msg.sender, tokenCollateralAddress, amountCollateral);
@@ -129,17 +140,34 @@ event CollateralDeposited(address indexed user, address indexed token, uint256 i
             revert DscEngine__TransferFailed();
         }
     }
+
+
+    /*
+    * @param tokenCollateralAddress The collateral address to redeem 
+    * @param amountCollateral The amount of collateral to redeem
+    * @param amountDscToBurn The amount of Dsc to burn
+    * This function burns DSC and redeems underlying collateral in one transaction 
+    */
+    function redeemCollateralForDsc(address tokenCollateralAddress, uint256 amountCollateral, uint256 amountDscToBurn) external {
+        burnDsc(amountDscToBurn);
+        redeemCollateral(tokenCollateralAddress, amountCollateral);      
+    }
     
-    function redeemCollateralForDsc() external {}
-    
-    function redeemCollateral() external {}
+    function redeemCollateral(address tokenCollateralAddress, uint256 amountCollateral) public moreThanZero(amountCollateral) nonReentrant{
+        s_collateralDeposited[msg.sender][tokenCollateralAddress] -= amountCollateral;
+        emit CollateralRedeemed(msg.sender,tokenCollateralAddress, amountCollateral);
+        bool success = IERC20(tokenCollateralAddress).transfer(msg.sender, amountCollateral);
+        if (!success) {
+            revert DscEngine__TransferFailed();
+        }
+    }
 
     /*
     * @notice follows CEI 
     * @param amountDscToMint The amount of DSC to mint
     * @notice they must have more collateral than the minimum threshold
     */
-    function mintDsc(uint256 amountDscToMint) external moreThanZero(amountDscToMint) nonReentrant {
+    function mintDsc(uint256 amountDscToMint) public moreThanZero(amountDscToMint) nonReentrant {
         s_DscMinted[msg.sender] += amountDscToMint;
         //revert if mint amount is above collateral limit
         _revertIfHealthFactorIsBroken(msg.sender);
@@ -147,9 +175,18 @@ event CollateralDeposited(address indexed user, address indexed token, uint256 i
         if(!minted){
             revert DscEngine__MintFailed();
         }
+        _revertIfHealthFactorIsBroken(msg.sender);
     }
 
-    function burnDsc() external {}
+    function burnDsc(uint256 amount) public moreThanZero(amount){
+        s_DscMinted[msg.sender] -= amount;
+        bool success = i_dsc.transferFrom(msg.sender, address(this), amount);
+        if (!success) {
+            revert DscEngine__TransferFailed();
+        }
+        i_dsc.burn(amount);
+        _revertIfHealthFactorIsBroken(msg.sender);
+    }
 
     function liquidate() external {}
 

@@ -7,11 +7,11 @@ import {DecentralisedStableCoin} from "src/DecentralisedStableCoin.sol";
 import {Script} from "forge-std/Script.sol";
 import {HelperConfig} from "script/HelperConfig.s.sol";
 
-contract DeployDSCEngine is Script {
+contract DeployDSC is Script {
     address[] public tokenAddresses;
     address[] public priceFeedAddresses; 
     
-    function run() external returns(DecentralisedStableCoin, DSCEngine){
+    function run() external returns(DecentralisedStableCoin, DSCEngine, HelperConfig){
         HelperConfig config = new HelperConfig();
 
         (address wethUsdPriceFeed, address wbtcUsdPriceFeed, address weth, address wbtc, uint256 deployKey) = config.activeNetworkConfig();    
@@ -25,6 +25,6 @@ contract DeployDSCEngine is Script {
 
         dsc.transferOwnership(address(engine)); 
         vm.stopBroadcast();
-        return(dsc, engine);
+        return(dsc, engine, config);
     }
 }
