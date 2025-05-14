@@ -27,6 +27,7 @@ import {DecentralisedStableCoin} from "src/DecentralisedStableCoin.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
+import {OracleLib} from "src/libraries/OracleLib.sol";
 
 /**
 * @title DSCEngine
@@ -54,6 +55,13 @@ contract DSCEngine is ReentrancyGuard {
     error DscEngine__HealthFactorNotImproved();
     
 /*//////////////////////////////////////////////////////////////
+                           TYPES
+//////////////////////////////////////////////////////////////*/
+
+using OracleLib for AggregatorV3Interface;
+
+    
+/*//////////////////////////////////////////////////////////////
                             STATE VARIABLES
 //////////////////////////////////////////////////////////////*/
 uint256 private constant ADDITIONAL_FEED_PRECISION = 1e10;
@@ -61,7 +69,7 @@ uint256 private constant PRECISION = 1e18;
 uint256 private constant LIQUIDATION_THRESHOLD = 50; //200% overcollateralized
 uint256 private constant LIQUIDATION_PRECISION = 100;
 uint256 private constant MIN_HEALTH_FACTOR = 1e18;
-uint256 private constant LIQUIDATOR_BONUS = 10; // this means a 10% bonus
+uint256 private constant LIQUIDATION_BONUS = 10; // this means a 10% bonus
 
 mapping(address token => address priceFeed) private s_priceFeeds;
 mapping(address user => mapping(address token => uint256 amount)) private s_collateralDeposited; 
@@ -201,7 +209,7 @@ event CollateralRedeemed(address indexed redeemFrom, address indexed redeemedTo,
     }
     uint256 tokenAmountFromDebtCovered = getTokenAmountFromUsd(collateral, debtToCover); 
       // Sweep extra amounts into a treasury
-        uint256 bonusCollateral = (tokenAmountFromDebtCovered * LIQUIDATOR_BONUS) / LIQUIDATION_PRECISION;
+        uint256 bonusCollateral = (tokenAmountFromDebtCovered * LIQUIDATION_BONUS) / LIQUIDATION_PRECISION;
         uint256 totalCollateralToRedeem = tokenAmountFromDebtCovered + bonusCollateral;
         _redeemCollateral(collateral, totalCollateralToRedeem, user, msg.sender);
         // We need to burn the DSC
@@ -212,8 +220,6 @@ event CollateralRedeemed(address indexed redeemFrom, address indexed redeemedTo,
         }
         _revertIfHealthFactorIsBroken(msg.sender); 
     }
-
-    function getHealthFactor() external view {}
 
 /*//////////////////////////////////////////////////////////////
                   PRIVATE & INTERNAL VIEW FUNCTIONS
@@ -273,13 +279,19 @@ event CollateralRedeemed(address indexed redeemFrom, address indexed redeemedTo,
         } 
         }
 
+    function _calculateHealthFactor(uint256 totalDscMinted, uint256 collateralValueInUsd) internal pure returns (uint256) {
+        if (totalDscMinted == 0) return type(uint256).max;
+        uint256 collateralAdjustedForThreshold = (collateralValueInUsd * LIQUIDATION_THRESHOLD) / LIQUIDATION_PRECISION;
+        return (collateralAdjustedForThreshold * 1e18) / totalDscMinted;
+    }
+    
 /*//////////////////////////////////////////////////////////////
                      PUBLIC & EXTERNAL VIEW FUNCTIONS
 //////////////////////////////////////////////////////////////*/
 
     function getTokenAmountFromUsd(address token, uint256 usdAmountInWei) public view returns (uint256) {
         AggregatorV3Interface priceFeed = AggregatorV3Interface(s_priceFeeds[token]);
-        (,int256 price,,,) = priceFeed.latestRoundData();
+        (,int256 price,,,) = priceFeed.staleCheckLatestRoundData();
         return (usdAmountInWei * PRECISION) / (uint256(price) * ADDITIONAL_FEED_PRECISION);
     }
 
@@ -296,7 +308,52 @@ event CollateralRedeemed(address indexed redeemFrom, address indexed redeemedTo,
     
     function getUsdValue(address token, uint256 amount) public view returns(uint256) {
         AggregatorV3Interface priceFeed = AggregatorV3Interface(s_priceFeeds[token]);
-        (, int256 price ,,,) = priceFeed.latestRoundData();
+        (, int256 price ,,,) = priceFeed.staleCheckLatestRoundData();
         return ((uint256(price) * ADDITIONAL_FEED_PRECISION) * amount) / PRECISION;  
-    }   
+    }
+
+    function getAccountInformation(address user) external view returns(uint256 totalDscMinted, uint256 collateralValueInUsd) {
+        (totalDscMinted, collateralValueInUsd) = _getAccountInformation(user);
+    }
+
+    function getCollateralBalanceOfUser(address user, address token) external view returns (uint256) {
+        return s_collateralDeposited[user][token];
+    }
+
+    function getCollateralTokens() external view returns (address[] memory) {
+        return s_collateralTokens;
+    }
+       
+    function getHealthFactor(address user) external view returns(uint256) {
+        return _healthFactor(user);
+    }
+
+   function getAdditionalFeedPrecision() external pure returns (uint256) {
+        return ADDITIONAL_FEED_PRECISION;
+    }
+
+    function getLiquidationBonus() external pure returns (uint256) {
+        return LIQUIDATION_BONUS;
+    }
+
+    function getLiquidationThreshold() external pure returns (uint256) {
+        return LIQUIDATION_THRESHOLD;
+    }
+
+    function getMinHealthFactor() external pure returns (uint256) {
+        return MIN_HEALTH_FACTOR;
+    }
+
+    function getPrecision() external pure returns (uint256) {
+        return PRECISION; 
+    }
+
+    function getDsc() external view returns (address) {
+        return address(i_dsc);
+    }
+
+    function getCollateralTokenPriceFeed(address token) external view returns (address) {
+        return s_priceFeeds[token];
+    }
+    
 }
