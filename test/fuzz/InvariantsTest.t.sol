@@ -20,14 +20,14 @@ contract InvariantsTest is StdInvariant, Test {
     address weth;
     address wbtc;
     Handler handler;
-    
+
     function setUp() external {
         deployer = new DeployDSC();
         (dsc, dsce, config) = deployer.run();
         (,, weth, wbtc,) = config.activeNetworkConfig();
-//      targetContract(address(dsce));
+        //      targetContract(address(dsce));
         handler = new Handler(dsce, dsc);
-        targetContract(address (handler));   
+        targetContract(address(handler));
     }
 
     function invariant_protocolMustHaveMoreValueThanTotalSupply() public view {
@@ -37,13 +37,12 @@ contract InvariantsTest is StdInvariant, Test {
 
         uint256 wethValue = dsce.getUsdValue(weth, wethDeposited);
         uint256 wbtcValue = dsce.getUsdValue(wbtc, wbtcDeposited);
-         
-        
+
         console.log("weth value:", wethValue);
         console.log("wbtc value:", wbtcValue);
         console.log("total supply:", totalSupply);
         console.log("Times mint called:", handler.timesMintIsCalled());
-                
+
         assert(wethValue + wbtcValue >= totalSupply);
     }
 
@@ -56,5 +55,4 @@ contract InvariantsTest is StdInvariant, Test {
         dsce.getPrecision();
         dsce.getDsc();
     }
-    
 }

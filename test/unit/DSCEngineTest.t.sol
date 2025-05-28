@@ -29,27 +29,25 @@ contract DSCEngineTest is Test {
         ERC20Mock(weth).mint(USER, STARTING_ERC20_BALANCE);
     }
 
-/*//////////////////////////////////////////////////////////////
+    /*//////////////////////////////////////////////////////////////
                            CONSTRUCTOR TESTS
-//////////////////////////////////////////////////////////////*/
-address[] public tokenAddresses;
-address[] public priceFeedAddresses;
+    //////////////////////////////////////////////////////////////*/
 
-function testRevertsIfTokenLengthDoesntMatchPriceFeeds() public {
-    tokenAddresses.push(weth);
-    priceFeedAddresses.push(ethUsdPriceFeed);
-    priceFeedAddresses.push(btcUsdPriceFeed);
+    address[] public tokenAddresses;
+    address[] public priceFeedAddresses;
 
-    vm.expectRevert(DSCEngine.DscEngine__TokenAddressesAndPriceFeedAddressesMustBeSameLength.selector);
-    new DSCEngine(tokenAddresses, priceFeedAddresses, address(dsc));
-}
+    function testRevertsIfTokenLengthDoesntMatchPriceFeeds() public {
+        tokenAddresses.push(weth);
+        priceFeedAddresses.push(ethUsdPriceFeed);
+        priceFeedAddresses.push(btcUsdPriceFeed);
 
+        vm.expectRevert(DSCEngine.DscEngine__TokenAddressesAndPriceFeedAddressesMustBeSameLength.selector);
+        new DSCEngine(tokenAddresses, priceFeedAddresses, address(dsc));
+    }
 
-
-
-/*//////////////////////////////////////////////////////////////
+    /*//////////////////////////////////////////////////////////////
                                PRICE TEST
-//////////////////////////////////////////////////////////////*/
+    //////////////////////////////////////////////////////////////*/
 
     function testGetUsdValue() public view {
         uint256 ethAmount = 15e18;
@@ -73,7 +71,6 @@ function testRevertsIfTokenLengthDoesntMatchPriceFeeds() public {
     function testRevertsIfCollateralZero() public {
         vm.startPrank(USER);
         ERC20Mock(weth).approve(address(dsce), AMOUNT_COLLATERAL);
-
         vm.expectRevert(DSCEngine.DscEngine__NeedsMoreThanZero.selector);
         dsce.depositCollateral(weth, 0);
         vm.stopPrank();
@@ -101,4 +98,62 @@ function testRevertsIfTokenLengthDoesntMatchPriceFeeds() public {
         assertEq(totalDscMinted, 0);
         assertEq(expectedDepositAmount, AMOUNT_COLLATERAL);
     }
+    /*//////////////////////////////////////////////////////////////
+                            REDEEM AND BURN
+    //////////////////////////////////////////////////////////////*/
+
+    function testRedeemCollateralForDscIsGreaterThanZero() public depositedCollateral {
+        vm.startPrank(USER);
+        vm.expectRevert(DSCEngine.DscEngine__NeedsMoreThanZero.selector);
+        dsce.redeemCollateralForDsc(weth, 0, 0);
+        vm.stopPrank();
+    }
+
+    // function testBurnAmountForRedeemIsCorrect() public depositedCollateral {
+    //    // Arrange
+    //    // uint256 dscMintedBefore = dsce.getDscMinted(USER);
+    //     // Act
+    //     vm.startPrank(USER);
+    //     dsce.redeemCollateral(weth, AMOUNT_COLLATERAL);
+    //     vm.stopPrank();
+    //     // Assert
+    //     //uint256 dscMintedAfter = dsce.getDscMinted(USER);
+    //     //assertEq(dscMintedAfter, 0);
+    // }
+
+    function testCannotRedeemMoreThanBurned() public depositedCollateral {}
+
+    function testBurningDscReducesSupply() public depositedCollateral {}
+
+    function testRedeemCollateralUpdatesUserBalances() public depositedCollateral {}
+
+    function testRedeemRevertsIfHealthFactorIsBroken() public depositedCollateral {}
+
+    /*//////////////////////////////////////////////////////////////
+                          BURN AND LIQUIDATION
+    //////////////////////////////////////////////////////////////*/
+
+    function testMoreThanZeroLiquidationReverts() public {}
+
+    function testRevertsIfHealthFactorIsOK() public {}
+
+    function testRevertsIfHealthFactorHasntImproved() public {}
+
+    /*//////////////////////////////////////////////////////////////
+                          PRIVATE AND INTERNAL
+    //////////////////////////////////////////////////////////////*/
+
+    function testPrivateBurnDsc() public {}
+
+    function testRedeemCollateralPrivate() public {}
+
+    function testGetAccountInformaitonPrivate() public {}
+
+    function testHealthFactorPrivate() public {}
+
+    function testHealthFactorIsBrokenPrivate() public {}
+
+    function testRevertIfHealthFactorIsBroken() public {}
+
+    function testCalculateHealthFactor() public {}
 }

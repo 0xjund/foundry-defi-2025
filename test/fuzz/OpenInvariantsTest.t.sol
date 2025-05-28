@@ -16,8 +16,8 @@
 //     DecentralisedStableCoin dsc;
 //     HelperConfig config;
 //     address weth;
-//     address wbtc;  
-    
+//     address wbtc;
+
 //     function setUp() external {
 //         deployer = new DeployDSC();
 //         (dsc, dsce, config) = deployer.run();
@@ -36,7 +36,7 @@
 //         console.log("weth value:", wethValue);
 //         console.log("wbtc value:", wbtcValue);
 //         console.log("total supply:", totalSupply);
-        
+
 //         assert(wethValue + wbtcValue >= totalSupply);
 //     }
 // }
