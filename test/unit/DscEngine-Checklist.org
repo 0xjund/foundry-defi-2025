@@ -1,0 +1,20 @@
+#+title: Dsc Engine Checklist
+
+* DONE Constructor Tests
+* TODO Price Tests
+** DONE testGetUsdValue
+** DONE testGetTokenAmountFromUsd
+
+* TODO Deposit/Redeem Collateral Tests
+** DONE testRevertsIfCollateralZero
+** DONE testRevertsWithUnapprovedCollateral
+** DONE testCanDepositCollateralAndGetAccountInfo
+** DONE depositCollateralAndMintDsc
+** DONE redeemCollateralForDsc
+
+* TODO Burn Dsc
+** TODO burnDsc
+** TODO liquidate
+
+* TODO External/ Public Functions
+- Check if getters are included in the fuzz test
